@@ -14,13 +14,13 @@ In the first article about Terraform I have focused on basics required to start 
 ## Local backend
 By default Terraform is using **local** backend which is simply writing state file to local file system. This provider does not require providing any additional configuration and by default will use *terraform.tfstate* file to store your state. For the sake of learning, lets try to change the name of the file used for storing the state. Add following block to *main.tf* file which we have created in previous article.
 
-{% highlight hcl %}
+```hcl
 terraform {
   backend "local" {
     path = "my-state-file.tfstate"
   }
 }
-{% endhighlight %}
+```
 
 The above code instructs Terraform to configure local backend in such way that it stores state file in *my-state-file.tfstate*. Now if you would try running `terraform plan` you would get information about need of running `terraform init` first to initialize the backend. In fact it needs to be called after all backend configuration changes.
 
@@ -43,12 +43,32 @@ On the left side there is normal output from the command which includes executio
 
 If you take closer look at directory with your scripts you will notice that there is new file created: `.my-state-file.tfstate.lock.info`. It was created by Terraform when acquiring a lock - when another process which is attempting to modify the state will see this file exists it will stop with the same error as one the right side of the screenshot.
 
-While the above example was showing how state locking is working, *local* backend can be hardly used in scenarios where team of people need to colaborate. There reason for that is simple and lies in the name of the backend - *local*. Imagine two developers making separate changes in Terraform scripts and running `terraform apply` against the environment. In such scenario there is now way that Terraform could detect two separate changes being done - as a result the state files on both developer machines would contain distinct changes and get simply out of sync. In the next section I will talk about remote backends which can mitigate that issue.  
+While the above example was showing how state locking is working, *local* backend can be hardly used in scenarios where team of people need to colaborate. There reason for that is simple and lies in the name of the backend - *local*. Imagine two developers making separate changes in Terraform scripts and running `terraform apply` against the environment. In such scenario there is no way that Terraform could detect two separate changes being done - as a result the state files on both developer machines would contain distinct changes and get out of sync. 
+
+In the next section I will talk about remote backends using [*azurerm*](https://www.terraform.io/docs/language/settings/backends/azurerm.html) as an example.  
+
+## Remote backend
+Unlike *local* backends, remote ones allow sharing the state across several parties - in order to make this happen, such backend need to store the state in some shared location. Different implementations are using different solutions to achieve that goal e.g.:
+* [*http* backend](https://www.terraform.io/docs/language/settings/backends/http.html) - relies on HTTP API to retrieve, lock and update the state.
+* [*s3* backend](https://www.terraform.io/docs/language/settings/backends/s3.html) - which uses Amazon Simple Storage Service in order to store the state and DynamoDB to allow state locking.
+
+The implementation I will talk about in this section is *azurerm* - it is using Azure Blob Container to store the state and its [built in capabilities](https://docs.microsoft.com/en-us/azure/storage/blobs/concurrency-manage?tabs=dotnet) to provide locking.
+
+In order to configure the backend we will need separate Storage Account for storing the state - we will create one along with new Resource Group using Azure CLI. You might probably wonder why I am not telling to create that with Terraform. You could but then you would need to store the state somewhere. It is more practical to create set of scripts which bootstraps resources required to store the state and the build outstanding infrastructure with Terraform.
+
+Lets start from creating Resource Group:
+```
+az group create --location centralus --name terraform-state-storage
+```
+Now we can create Storage Account:
+```
+az storage account create --name tfstatestorage -- resource-group terraform-state-storage --location centralus --sku Standard_LRS
+```
 
 ## Lineage and serial number
-Lets take a loo k at the Terraform state similar to one that would be created after running scripts from previous article. It will look more or less like that:
+Lets take a look at the Terraform state similar to one that would be created after running scripts from previous article. It will look more or less like that:
 
-{% highlight json %}
+```json
 {
   "version": 4,
   "terraform_version": "0.14.2",
@@ -78,7 +98,7 @@ Lets take a loo k at the Terraform state similar to one that would be created af
     }
   ]
 }
-{% endhighlight %}
+```
 
 Last time I told you about how this file maps resources defined in script with physical ones, this time I would like to focus on aspects related to state consistency:
 * Lineage is unique identifier assigned when creating the state file. If I would delete my local state file and recreate it, Terraform would generate new value. This allows Terraform to determine if two states were generated in the same moment of time.
