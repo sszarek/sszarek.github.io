@@ -94,6 +94,16 @@ terraform {
   }
 }
 ```
+As you can see on the snippet above we need to provide values for three arguments:
+* `resource_group_name` - name of the resource group where storage account is located
+* `storage_account_name` - name of the Storage Account which contains Blob Container for storing the state 
+* `container_name` - name of the state file which will be saved in the blob
+
+When you are done changing backend configuration, run `terraform init` to initialize new backend. You should see information similar to one which you have already seen when we were reconfiguring *local* backend - Terraform will ask if you would like to copy existing (local) state to the new backend. You can confirm by typing `yes`. Typing `no` would cause initializing empty state in remote backend. 
+![Terraform asking for confirmation](/assets/azure-terraform-provisioning-2/switch-to-remote-backend.png)
+
+We will choose the first option and type `yes`. Now Terraform should display information that the backend was switch, similar to one one the screenshot below.
+![Terraform confirms that the backend was changed](/assets/azure-terraform-provisioning-2/remote-backend-initialized.png)
 
 ## Lineage and serial number
 Lets take a look at the Terraform state similar to one that would be created after running scripts from previous article. It will look more or less like that:
