@@ -56,13 +56,43 @@ The implementation I will talk about in this section is *azurerm* - it is using 
 
 In order to configure the backend we will need separate Storage Account for storing the state - we will create one along with new Resource Group using Azure CLI. You might probably wonder why I am not telling to create that with Terraform. You could but then you would need to store the state somewhere. It is more practical to create set of scripts which bootstraps resources required to store the state and the build outstanding infrastructure with Terraform.
 
+For configuring *azurerm* backend we will need to create following Azure resources:
+* Resource Group - it will contain resources needed for storing Terraform state. Usually you will want to have separate Resource Groups for the resources used by system you are creating and the supporting infrastructure.
+* Storage Account - will contain Blob Container.
+* Blob Container - actual state will be stored as blob.
+
+Essentially we are looking for the setup as on diagram below.
+![Resources for AzureRm backend](/assets/azure-terraform-provisioning-2/ResourcesForAzureRmBackend.png)
+
 Lets start from creating Resource Group:
 ```
 az group create --location centralus --name terraform-state-storage
 ```
-Now we can create Storage Account:
+Now we can create Storage Account - while creating it, we need to make sure that its name is globally unique and has no more than 24 characters. We can achieve that with simple trick: generage GUID/UUID and then hash it with MD5 algorithm. In Linux environments it is as easy as running:
+```bash
+uuidgen | md5sum | head -c24
 ```
-az storage account create --name tfstatestorage -- resource-group terraform-state-storage --location centralus --sku Standard_LRS
+In Windows environemnts running PowerShell you can achieve that following [this example](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-filehash?view=powershell-7.1#example-4--compute-the-hash-of-a-string).
+
+Lets use generated name to finally create Storage Account.
+```
+az storage account create --name <your unique storage account name> -- resource-group terraform-state-storage --location centralus --sku Standard_LRS
+```
+One missing bit right now is Blob container, we will create it running command below:
+```
+az storage container create --name statecontainer --account-name <your unique storage account name>
+```
+
+With all the above resources set up, lets jump into configuration of *azurerm* backend. We will modify `main.tf` file by replacing previously added configuration for *local* backend with following block:
+```hcl
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "terraform-state-storage"
+    storage_account_name = "<your unique storage account name>"
+    container_name       = "statecontainer"
+    key                  = "my-state-file.tfstate"
+  }
+}
 ```
 
 ## Lineage and serial number
