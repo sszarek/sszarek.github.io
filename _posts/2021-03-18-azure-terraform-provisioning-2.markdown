@@ -68,11 +68,11 @@ Lets start from creating Resource Group:
 ```
 az group create --location centralus --name terraform-state-storage
 ```
-Now we can create Storage Account - while creating it, we need to make sure that its name is globally unique and has no more than 24 characters. We can achieve that with simple trick: generage GUID/UUID and then hash it with MD5 algorithm. In Linux environments it is as easy as running:
+Now we can create Storage Account - while creating it, we need to make sure that its name is globally unique and has no more than 24 characters. We can achieve that with simple trick: generate GUID/UUID and then hash it with MD5 algorithm. In Linux environments it is as easy as running:
 ```bash
 uuidgen | md5sum | head -c24
 ```
-In Windows environemnts running PowerShell you can achieve that following [this example](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-filehash?view=powershell-7.1#example-4--compute-the-hash-of-a-string).
+In Windows environments running PowerShell you can achieve that following [this example](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-filehash?view=powershell-7.1#example-4--compute-the-hash-of-a-string).
 
 Lets use generated name to finally create Storage Account.
 ```
@@ -104,6 +104,21 @@ When you are done changing backend configuration, run `terraform init` to initia
 
 We will choose the first option and type `yes`. Now Terraform should display information that the backend was switch, similar to one one the screenshot below.
 ![Terraform confirms that the backend was changed](/assets/azure-terraform-provisioning-2/remote-backend-initialized.png)
+
+Right now if you inspect the contents of the Blob you will see new file being available, which is `my-state-file.tfstate`. Below command will list files available in Blob Container and format the output as a table.
+```
+az storage blob list `
+ --container-name statecontainer `
+ --account-name <your unique storage account name> `
+ --query "[].{Name:name, ContentType:properties.contentSettings.contentType,CreationTime:properties.creationTime}" `
+ --output table
+```
+The output of the above should be similar to the screenshot below:
+![Output of az storage blob list](/assets/azure-terraform-provisioning-2/AzStorageBlobListOutput.png)
+
+If you would inspect `my-state-file.tfstate` file in Container you would found out that this has the same structure and contents as its local counterpart. By the way, local version of the file should still be available in the directory but be aware of the fact that Terraform will ignore its contents as right now its configured to work with remote backend.
+
+You can also inspect contents of the Container by navigating to your Storage Account in Azure Portal and using Storage Explorer.
 
 ## Lineage and serial number
 Lets take a look at the Terraform state similar to one that would be created after running scripts from previous article. It will look more or less like that:
