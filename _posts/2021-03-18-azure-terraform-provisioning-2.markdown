@@ -119,3 +119,13 @@ The output of the above should be similar to the screenshot below:
 If you would inspect `my-state-file.tfstate` file in Container you would found out that this has the same structure and contents as its local counterpart. By the way, local version of the file should still be available in the directory but be aware of the fact that Terraform will ignore its contents as right now its configured to work with remote backend.
 
 You can also inspect contents of the Container by navigating to your Storage Account in Azure Portal and using Storage Explorer.
+
+## Summary
+After lecture of this article you should understand the capabilities and basics of Terraform backends. The topic is broad and I strongly encourage you to experiment and go through official documentation.
+
+In the next article I will continue talking about remote backends but this time I will focus on state conflict resolution. Stay tuned! 😎
+
+## Links
+[Terraform documentation about remote state](https://www.terraform.io/docs/language/settings/backends/remote.html)
+
+[Documentation for Azurerm backend](https://www.terraform.io/docs/language/settings/backends/azurerm.html)
